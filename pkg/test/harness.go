@@ -47,6 +47,7 @@ type Harness struct {
 	configLock     sync.Mutex
 	stopping       bool
 	bgProcesses    []*exec.Cmd
+	TestHandlers   map[string]func(t *testing.T)
 }
 
 // LoadTests loads all of the tests in a given directory.
@@ -311,15 +312,17 @@ func (h *Harness) RunTests() {
 
 			test.Client = h.Client
 			test.DiscoveryClient = h.DiscoveryClient
-
 			t.Run(test.Name, func(t *testing.T) {
 				test.Logger = testutils.NewTestLogger(t, test.Name)
-
 				if err := test.LoadTestSteps(); err != nil {
 					t.Fatal(err)
 				}
 
 				test.Run(t)
+				testHandler := h.TestHandlers[test.Name]
+				if testHandler != nil {
+					testHandler(t)
+				}
 			})
 		}
 	})
