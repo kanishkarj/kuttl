@@ -121,7 +121,7 @@ func printEvents(events []eventsbeta1.Event, logger conversion.DebugLogger) {
 }
 
 // Run runs a test case including all of its steps.
-func (t *Case) Run(test *testing.T) {
+func (t *Case) Run(test *testing.T, customTestHandler func(t *testing.T)) {
 	test.Parallel()
 
 	ns := fmt.Sprintf("kudo-test-%s", petname.Generate(2, "-"))
@@ -162,6 +162,10 @@ func (t *Case) Run(test *testing.T) {
 	}
 
 	t.CollectEvents(ns)
+
+	if customTestHandler != nil {
+		customTestHandler(test)
+	}
 }
 
 // CollectTestStepFiles collects a map of test steps and their associated files

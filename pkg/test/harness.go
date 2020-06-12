@@ -318,11 +318,7 @@ func (h *Harness) RunTests() {
 					t.Fatal(err)
 				}
 
-				test.Run(t)
-				testHandler := h.TestHandlers[test.Name]
-				if testHandler != nil {
-					testHandler(t)
-				}
+				test.Run(t, h.TestHandlers[test.Name])
 			})
 		}
 	})
