@@ -35,6 +35,7 @@ type Case struct {
 
 	Client          func(forceNew bool) (client.Client, error)
 	DiscoveryClient func() (discovery.DiscoveryInterface, error)
+	CaseCustomTests map[string]CustomTest
 
 	Logger testutils.Logger
 }
@@ -121,7 +122,7 @@ func printEvents(events []eventsbeta1.Event, logger conversion.DebugLogger) {
 }
 
 // Run runs a test case including all of its steps.
-func (t *Case) Run(test *testing.T, customTestHandler func(t *testing.T)) {
+func (t *Case) Run(test *testing.T) {
 	test.Parallel()
 
 	ns := fmt.Sprintf("kudo-test-%s", petname.Generate(2, "-"))
@@ -159,13 +160,23 @@ func (t *Case) Run(test *testing.T, customTestHandler func(t *testing.T)) {
 			test.Error(fmt.Errorf("failed in step %s", testStep.String()))
 			break
 		}
+		customTest := t.CaseCustomTests[testStep.Name]
+		if customTest != nil {
+			customTestClient := t.Client
+			customTestDiscoveryClient := t.DiscoveryClient
+			customTestLogger := t.Logger.WithPrefix("custom test for " + testStep.String())
+			if errs := customTest(test, ns, customTestClient, customTestDiscoveryClient, customTestLogger); len(errs) > 0 {
+				for _, err := range errs {
+					test.Error(err)
+				}
+
+				test.Error(fmt.Errorf("failed in custom test for step %s", testStep.String()))
+				break
+			}
+		}
 	}
 
 	t.CollectEvents(ns)
-
-	if customTestHandler != nil {
-		customTestHandler(test)
-	}
 }
 
 // CollectTestStepFiles collects a map of test steps and their associated files

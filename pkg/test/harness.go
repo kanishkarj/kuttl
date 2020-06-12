@@ -29,25 +29,33 @@ import (
 	testutils "github.com/kudobuilder/kuttl/pkg/test/utils"
 )
 
+type CustomTest func(
+	t *testing.T,
+	namespace string,
+	client func(forceNew bool) (client.Client, error),
+	DiscoveryClient func() (discovery.DiscoveryInterface, error),
+	Logger testutils.Logger,
+) []error
+
 // Harness loads and runs tests based on the configuration provided.
 type Harness struct {
 	TestSuite harness.TestSuite
 	T         *testing.T
 
-	logger         testutils.Logger
-	managerStopCh  chan struct{}
-	config         *rest.Config
-	docker         testutils.DockerClient
-	client         client.Client
-	dclient        discovery.DiscoveryInterface
-	env            *envtest.Environment
-	kind           *kind
-	kubeConfigPath string
-	clientLock     sync.Mutex
-	configLock     sync.Mutex
-	stopping       bool
-	bgProcesses    []*exec.Cmd
-	TestHandlers   map[string]func(t *testing.T)
+	logger           testutils.Logger
+	managerStopCh    chan struct{}
+	config           *rest.Config
+	docker           testutils.DockerClient
+	client           client.Client
+	dclient          discovery.DiscoveryInterface
+	env              *envtest.Environment
+	kind             *kind
+	kubeConfigPath   string
+	clientLock       sync.Mutex
+	configLock       sync.Mutex
+	stopping         bool
+	bgProcesses      []*exec.Cmd
+	SuiteCustomTests map[string]map[string]CustomTest
 }
 
 // LoadTests loads all of the tests in a given directory.
@@ -312,13 +320,14 @@ func (h *Harness) RunTests() {
 
 			test.Client = h.Client
 			test.DiscoveryClient = h.DiscoveryClient
+			test.CaseCustomTests = h.SuiteCustomTests[test.Name]
 			t.Run(test.Name, func(t *testing.T) {
 				test.Logger = testutils.NewTestLogger(t, test.Name)
 				if err := test.LoadTestSteps(); err != nil {
 					t.Fatal(err)
 				}
 
-				test.Run(t, h.TestHandlers[test.Name])
+				test.Run(t)
 			})
 		}
 	})
