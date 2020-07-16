@@ -32,6 +32,7 @@ type Case struct {
 	Dir        string
 	SkipDelete bool
 	Timeout    int
+	Namespace  string
 
 	Client          func(forceNew bool) (client.Client, error)
 	DiscoveryClient func() (discovery.DiscoveryInterface, error)
@@ -125,10 +126,14 @@ func printEvents(events []eventsbeta1.Event, logger conversion.DebugLogger) {
 func (t *Case) Run(test *testing.T) {
 	test.Parallel()
 
-	ns := fmt.Sprintf("kudo-test-%s", petname.Generate(2, "-"))
+	ns := t.Namespace
 
-	if err := t.CreateNamespace(ns); err != nil {
-		test.Fatal(err)
+	if ns == "" {
+		ns = fmt.Sprintf("kudo-test-%s", petname.Generate(2, "-"))
+
+		if err := t.CreateNamespace(ns); err != nil {
+			test.Fatal(err)
+		}
 	}
 
 	if !t.SkipDelete {
@@ -229,6 +234,17 @@ func (t *Case) CollectTestStepFiles() (map[int64][]string, error) {
 
 // LoadTestSteps loads all of the test steps for a test case.
 func (t *Case) LoadTestSteps() error {
+
+	ns := t.Namespace
+
+	if ns == "" {
+		ns = fmt.Sprintf("kudo-test-%s", petname.Generate(2, "-"))
+
+		if err := t.CreateNamespace(ns); err != nil {
+			return err
+		}
+	}
+
 	testStepFiles, err := t.CollectTestStepFiles()
 	if err != nil {
 		return err
@@ -247,7 +263,7 @@ func (t *Case) LoadTestSteps() error {
 		}
 
 		for _, file := range files {
-			if err := testStep.LoadYAML(file); err != nil {
+			if err := testStep.LoadYAML(file, ns); err != nil {
 				return err
 			}
 		}
