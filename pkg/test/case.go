@@ -24,6 +24,12 @@ import (
 
 var testStepRegex = regexp.MustCompile(`^(\d+)-([^.]+)(.yaml)?$`)
 
+type CaseResults struct {
+	Name   string
+	Passed []string
+	Failed []string
+}
+
 // Case contains all of the test steps and the Kubernetes client and other global configuration
 // for a test.
 type Case struct {
@@ -123,7 +129,7 @@ func printEvents(events []eventsbeta1.Event, logger conversion.DebugLogger) {
 }
 
 // Run runs a test case including all of its steps.
-func (t *Case) Run(test *testing.T) {
+func (t *Case) Run(test *testing.T) *CaseResults {
 	test.Parallel()
 
 	ns := t.Namespace
@@ -142,6 +148,12 @@ func (t *Case) Run(test *testing.T) {
 				test.Error(err)
 			}
 		}()
+	}
+
+	result := CaseResults{
+		Name:   t.Name,
+		Passed: []string{},
+		Failed: []string{},
 	}
 
 	for _, testStep := range t.Steps {
@@ -179,9 +191,15 @@ func (t *Case) Run(test *testing.T) {
 				break
 			}
 		}
+		if test.Failed() {
+			result.Failed = append(result.Failed, fmt.Sprintf("%d:%s", testStep.Index, testStep.Name))
+		} else {
+			result.Passed = append(result.Passed, fmt.Sprintf("%d:%s", testStep.Index, testStep.Name))
+		}
 	}
 
 	t.CollectEvents(ns)
+	return &result
 }
 
 // CollectTestStepFiles collects a map of test steps and their associated files

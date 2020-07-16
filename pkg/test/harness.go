@@ -300,7 +300,7 @@ func (h *Harness) DockerClient() (testutils.DockerClient, error) {
 
 // RunTests should be called from within a Go test (t) and launches all of the KUTTL integration
 // tests at dir.
-func (h *Harness) RunTests() {
+func (h *Harness) RunTests() []*CaseResults {
 	// cleanup after running tests
 	defer h.Stop()
 	h.T.Log("running tests")
@@ -313,7 +313,7 @@ func (h *Harness) RunTests() {
 		}
 		tests = append(tests, tempTests...)
 	}
-
+	results := []*CaseResults{}
 	h.T.Run("harness", func(t *testing.T) {
 		for _, test := range tests {
 			test := test
@@ -327,17 +327,18 @@ func (h *Harness) RunTests() {
 					t.Fatal(err)
 				}
 
-				test.Run(t)
+				results = append(results, test.Run(t))
 			})
 		}
 	})
 	h.T.Log("run tests finished")
+	return results
 }
 
 // Run the test harness - start the control plane and then run the tests.
-func (h *Harness) Run() {
+func (h *Harness) Run() []*CaseResults {
 	h.Setup()
-	h.RunTests()
+	return h.RunTests()
 }
 
 // Setup spins up the test env based on configuration
