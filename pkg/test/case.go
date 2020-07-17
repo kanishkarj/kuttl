@@ -26,6 +26,7 @@ var testStepRegex = regexp.MustCompile(`^(\d+)-([^.]+)(.yaml)?$`)
 
 type CaseResults struct {
 	Name   string
+	All    []string
 	Passed []string
 	Failed []string
 }
@@ -149,8 +150,14 @@ func (t *Case) Run(test *testing.T) *CaseResults {
 
 	result := CaseResults{
 		Name:   t.Name,
+		All:    []string{},
 		Passed: []string{},
 		Failed: []string{},
+	}
+
+	// Get all test names
+	for _, testStep := range t.Steps {
+		result.All = append(result.All, fmt.Sprintf("%d:%s", testStep.Index, testStep.Name))
 	}
 
 	for _, testStep := range t.Steps {
